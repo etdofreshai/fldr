@@ -1,6 +1,6 @@
-# FLDR — Design Plan
+# fldr — Design Plan
 
-This document is the working plan for FLDR. It's intentionally rough and meant to grow over time. Each section is a piece of the system that needs to be designed before serious code is written.
+This document is the working plan for fldr. It's intentionally rough and meant to grow over time. Each section is a piece of the system that needs to be designed before serious code is written.
 
 ## 0. Goals & non-goals
 
@@ -80,7 +80,7 @@ Auth: token-based (Bearer). Tokens scoped per device.
 
 ### 3.3 Ignore rules
 - `.fldrignore` — gitignore-like syntax
-- Built-in defaults: `.git/`, `node_modules/`, `.DS_Store`, `*.swp`, common build outputs, FLDR's own metadata dir.
+- Built-in defaults: `.git/`, `node_modules/`, `.DS_Store`, `*.swp`, common build outputs, fldr's own metadata dir.
 
 ### 3.4 Local metadata
 Per initialized folder: `.fldr/` containing:
@@ -112,7 +112,7 @@ Read-only browser:
 
 ## 5. Decentralization
 
-- Anyone can run a FLDR host. The CLI doesn't hard-code `fldr.com`.
+- Anyone can run a fldr host. The CLI doesn't hard-code `fldr.com`.
 - `fldr.com` runs the default **remote lookup** service: `GET /v1/lookup/{owner}/{repo}` returns the canonical host URL. Self-hosters register their `owner` namespace with the lookup service, OR users address self-hosted repos directly (`host.example.com/owner/repo`).
 - Multiple remotes per repo are allowed. The daemon fans out ops to all configured remotes. One is the "primary" for conflict resolution.
 - Federation between hosts is **out of scope for v1** — start with simple multi-remote fan-out and revisit later.
@@ -120,7 +120,7 @@ Read-only browser:
 ## 6. AI integration surface
 
 - **Library/SDK** in at least Python and TypeScript: thin wrapper over the daemon that lets an agent perform `add/edit/delete` with a `why`.
-- **MCP server**: expose FLDR ops as MCP tools so agents in compatible clients can sync work into a FLDR repo with one tool call.
+- **MCP server**: expose fldr ops as MCP tools so agents in compatible clients can sync work into a fldr repo with one tool call.
 - **Why-string conventions**: short, imperative, present-tense ("add login handler", "fix typo in intro"). Document this so different agents produce a coherent log.
 - **Session tagging**: optional `session_id` on ops so a viewer can group "what this agent did in one run".
 
@@ -137,7 +137,7 @@ Read-only browser:
 - Linear op log vs. DAG? Linear is simpler; DAG is needed if we ever want true multi-device concurrent writes without LWW. Start linear, leave room to evolve.
 - Binary file storage: chunked? Resumable uploads? Probably yes for anything bigger than ~10MB.
 - Should `why` be required, optional, or required-but-AI-only? Lean: optional, but the CLI nags humans who don't provide one.
-- Naming: is `FLDR` final? Domain situation for `fldr.com`?
+- Naming: is `fldr` final? Domain situation for `fldr.com`?
 - How does an offline-then-online sync handle ops the remote already has (from another device)? Need a reconcile step on reconnect.
 
 ## 9. Milestones
