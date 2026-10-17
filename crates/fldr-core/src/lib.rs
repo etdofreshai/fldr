@@ -8,5 +8,7 @@
 
 pub mod api;
 pub mod hash;
+pub mod path;
 
 pub use hash::{BlobId, ChangesetId, Hash, HashParseError, ObjectKind, TreeId};
+pub use path::{PathError, RepoPath};
