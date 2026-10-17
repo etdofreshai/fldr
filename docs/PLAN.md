@@ -383,10 +383,13 @@ server. This replaces Scion's regional caches at no cost.
 
 - **M0: scaffold.** Workspace, frozen hash and wire contracts, `BlobStore`
   with memory and filesystem implementations, metadata migration, server with
-  `/health` and `/v1`, `fldr health`, CI, and a live deploy on Dokploy.
-- **M1: data model.** RepoPath, trees, changesets, canonical encoding,
-  `apply`, `diff`, `build_trees` and `paths_overlap` in `fldr-core`, with
-  property tests. `MetaStore` in Postgres and in memory.
+  `/health` and `/v1`, `fldr health`, CI, and a live deploy on Dokploy. The
+  pure `fldr-core` data model (RepoPath, trees, changesets, canonical
+  encoding, `apply`, `diff`, `build_trees`, `paths_overlap`, golden vectors)
+  also landed in M0.
+- **M1: metadata store.** `MetaStore` methods for repos, changesets and refs
+  in Postgres and in memory, backed by the M0 schema, with the shared
+  conformance-test pattern used for `BlobStore`.
 - **M2: write path.** Repos, tokens, blob upload with `blobs/missing`, the
   `repo_blobs` authorization check, changeset creation and the `root_tree`
   derivation.
@@ -397,8 +400,9 @@ server. This replaces Scion's regional caches at no cost.
 - **M5: history queries.** `log`, `diff`, `merge-base` and path history,
   backed by the `skiplist` and `path_history` derivations. Cloudflare caching
   headers on immutable routes.
-- **M6: agent surface.** A hosted MCP endpoint over the same API, and
-  agent/session-aware log views.
+- **M6: agent surface and viewer.** A hosted MCP endpoint over the same API,
+  agent/session-aware log views, and a read-only web viewer (tree, file, log,
+  diff) at the service root.
 - **M7: scale and reach.** S3 blob store, `blame`, `path_acl` enforcement,
   a FUSE virtual checkout and git import, each as needed.
 
