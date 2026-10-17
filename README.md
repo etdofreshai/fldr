@@ -1,62 +1,119 @@
 # fldr
 
-**fldr** (short for "folder") is a dead-simple file-sync tool and hosting service. Think of it as a different take on Git — same ideas about owners and repos, but built around continuous sync instead of commits, and with AI-friendly history baked in from day one.
+**fldr** (short for "folder") is centralized, immutable, content-addressed
+source control for agent workspaces and folders. It is a Rust service with a
+thin client, and the server owns all history. The design is inspired by
+Anthropic's Scion.
 
-> Status: early idea / pet project. Planning in progress — see [`docs/PLAN.md`](docs/PLAN.md).
+The server stores immutable blobs, trees and changesets. It computes commits,
+lands, logs, diffs and ancestry. The client lays out files, keeps a bounded
+per-machine object cache and provides the CLI. No full copy of a repository is
+materialized anywhere, and every query is an HTTP/JSON API, so an agent can
+read and write without a checkout.
 
-## The pitch
+fldr is **not a git replacement**. It targets the many folders that benefit
+from history and sharing without git's workflow: agent workspaces, notes,
+generated artifacts and scratch projects. Git import is deferred.
 
-You tell fldr which folders on your machine you care about. From that moment on, every write, edit, and delete is mirrored to the web at **fldr.com** (or a remote of your choice). No `git add`, no `git commit`, no `git push`. You just save a file.
+## Status
 
-For humans this is a frictionless way to keep folders in sync across machines and share them publicly. For AIs and automation it's something more: every file operation can carry a short "why" string — a one-line description of the intent behind the change — so the history doubles as a meaningful changelog written at the moment of the edit, not days later in a commit message.
+**M0: scaffold.** A server with a live `/health` endpoint runs at
+<https://fldr.etdofresh.com>. The data model, blob store, metadata schema and
+`fldr health` CLI command are being built in M0. Everything else described
+here, including commits, landing, checkout and the full API, is **planned**.
+See [`docs/PLAN.md`](docs/PLAN.md) for the design and milestones.
 
-## How it differs from Git
+## Core concepts
 
-| Git | fldr |
-| --- | ---- |
-| Snapshot-based: commits, branches, merges | Operation-based: a stream of add/edit/delete events |
-| Explicit `add` → `commit` → `push` | Implicit: write a file, it's synced |
-| Commit message attached to a batch of changes | A short "why" attached to each individual file op |
-| Distributed via clones; remotes are peers | Decentralized via remote lookup; **fldr.com** is the default hub but not required |
-| Designed for code review workflows | Designed for fast, continuous sync (with AIs as a first-class user) |
+- **Blob:** a file's bytes, identified by their plain SHA-256 (`sha256sum`
+  gives the blob id).
+- **Tree:** one directory level, a sorted map from name to a file entry
+  (blob, size, kind) or a subdirectory tree. Trees are hashed over a canonical
+  JSON encoding.
+- **Changeset:** a unit of history. It lists only the paths that changed
+  relative to its first parent (p1), plus its parents, actor, message and
+  time. It never contains a full tree.
+- **Ref:** a named pointer to a changeset, such as `main` or a release ref.
+  A ref moves only by a compare-and-swap (CAS), and every move is recorded in
+  an append-only ref log.
+- **Land:** moving `main` to include a changeset. The server rebases
+  non-overlapping changes itself and rejects overlapping ones with the
+  conflicting paths. It takes no global lock.
+- **Derived data:** indexes such as root trees, ancestry skiplists and path
+  history. Each is computed from the same index on the parent changesets.
+- **Actor and why:** every changeset records who made it (human, agent or
+  service, with optional agent and session) and a message explaining why.
 
-fldr is **not** trying to replace Git for source-controlled engineering work. It's trying to be the right tool for the much larger pile of folders that don't deserve commits — notes, assets, scratch projects, generated artifacts, agent workspaces — but still benefit from sync, history, and shareability.
+## Workspace layout
 
-## Concepts
+| Crate | Purpose |
+|---|---|
+| [`crates/fldr-core`](crates/fldr-core) | Pure data model with no I/O: hashes and typed ids, canonical encoding, trees, changesets, wire types. |
+| [`crates/fldr-store`](crates/fldr-store) | `BlobStore` trait with in-memory and filesystem implementations. |
+| [`crates/fldr-server`](crates/fldr-server) | HTTP server (axum, sqlx/Postgres) with an in-memory metadata fallback. |
+| [`crates/fldr-cli`](crates/fldr-cli) | The `fldr` command-line client. |
 
-- **Owner** — a user or org that hosts fldr repos (e.g. `etdofresh`).
-- **Repo** — a synced folder owned by an owner (e.g. `etdofresh/notes`).
-- **Remote** — where a repo lives on the network. Defaults to `fldr.com`, but any fldr-compatible host works. Remote lookup makes the system decentralized rather than centralized.
-- **Operation** — the atomic unit of history: `add`, `edit`, `delete`, `rename`, each optionally tagged with a `why`.
-- **History** — the ordered list of operations for a repo. There are no commits to squash, rebase, or revert against; you replay or rewind operations.
+## Quick start
 
-## CLI sketch (subject to change)
+Requires stable Rust (edition 2024).
 
 ```sh
-fldr login                         # auth against fldr.com (or a custom host)
-fldr init ./my-folder              # mark a folder for sync, create the remote repo
-fldr clone etdofresh/notes         # pull an existing repo to a local folder
-fldr remote add backup https://…   # add another remote
-fldr status                        # show sync state and any pending operations
-fldr log                           # show the operation history with `why` annotations
-fldr why "fixing typo in intro"    # set the `why` for the next file operation(s)
+cargo build
+
+# Run the server. It binds 0.0.0.0:8080 and keeps metadata in memory
+# because DATABASE_URL is unset.
+cargo run -p fldr-server
+
+# In another shell:
+cargo run -p fldr-cli -- health --host http://localhost:8080
+curl -s http://localhost:8080/health
 ```
 
-The daemon watches initialized folders and ships file operations to the configured remote(s) as they happen.
+Without `--host` (or `FLDR_HOST`), the CLI talks to
+`https://fldr.etdofresh.com`.
 
-## AI-friendly by design
+### Server environment variables
 
-When an agent edits a file via the fldr CLI (or library), it passes a `why` along with the operation. The result is a history that reads like a narrated session: "added scaffolding for auth route", "renamed handler for clarity", "deleted unused fixture". This is the bit that's hard to retrofit onto Git but trivial to bake into fldr from the start.
+| Variable | Meaning |
+|---|---|
+| `PORT` | Listen port. Default `8080`. |
+| `BIND` | Listen address. Default `0.0.0.0`. |
+| `DATABASE_URL` | Postgres URL. Optional; metadata is kept in memory when unset. |
+| `DATA_DIR` | Data directory. Default `./.fldr-data`; `/data` in Docker. Blobs go in `$DATA_DIR/blobs`. |
+| `RUST_LOG` | Log filter. Default `info`. |
+| `FLDR_LOG_FORMAT` | `json` or `pretty`. Docker uses `json`. |
 
-## Roadmap
+The HTTP API is documented in [`docs/api.md`](docs/api.md).
 
-Roadmap and design notes live in [`docs/PLAN.md`](docs/PLAN.md). Major pieces to figure out:
+## Planned CLI
 
-- CLI + local daemon (file watching, op queue, conflict handling)
-- Wire protocol and operation log format
-- Hosting service at fldr.com (auth, storage, remote lookup, public viewer)
-- Decentralization story (multiple remotes, federation, self-hosted hubs)
-- AI integration surface (library/SDK, `why` capture, MCP server?)
+None of these commands exist yet. This is the intended shape:
+
+```sh
+fldr clone etdofresh/notes              # sparse checkout of main; fetches only what it needs
+fldr status                             # local edits against the checked-out tree
+fldr commit -m "why this change"        # upload missing blobs, create a changeset, land it
+fldr log                                # history of main, with actor and message
+fldr diff                               # working copy against its base, or between changesets
+fldr cat etdofresh/notes@main:todo.md   # read a file without a checkout
+```
+
+## Credits
+
+The design follows Anthropic's engineering post
+[Redesigning source control](https://www.anthropic.com/engineering/redesigning-source-control)
+(October 2026), which describes Scion, their internal replacement for git.
+Scion has not been released. fldr is an independent personal and educational
+reimplementation of its published ideas and has no affiliation with
+Anthropic. It also draws on the "Bonsai" changeset model of Meta's
+[Sapling](https://sapling-scm.com/) and its server, Mononoke, which Scion
+credits as prior art. [`docs/scion-lessons.md`](docs/scion-lessons.md)
+summarizes the article and maps each lesson to a fldr decision.
+
+An earlier concept for fldr (May 2026) was a continuous file-sync tool with a
+"why" on each file operation. It is preserved in git history at commit
+`cef4711`; [`docs/PLAN.md`](docs/PLAN.md) explains what was kept and what was
+dropped.
 
 ## License
 
