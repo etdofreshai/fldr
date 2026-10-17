@@ -1,7 +1,6 @@
-# Only Cargo manifests and crates/ are needed to build fldr-server.
+# Only Cargo manifests, crates/ and .git (for the build-time gitSha) are needed.
 target/
 **/target/
-.git
 .gitignore
 .dockerignore
 Dockerfile

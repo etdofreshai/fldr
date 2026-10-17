@@ -30,7 +30,13 @@ pub const SERVICE: &str = "fldr-server";
 /// Crate version of this build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Git commit this build came from, if `build.rs` could determine it.
-pub const GIT_SHA: Option<&str> = option_env!("FLDR_GIT_SHA");
+///
+/// An empty value counts as unknown: the Dockerfile always declares the
+/// `FLDR_GIT_SHA` build arg, so it is present but empty when not passed.
+pub const GIT_SHA: Option<&str> = match option_env!("FLDR_GIT_SHA") {
+    Some(sha) if !sha.is_empty() => Some(sha),
+    _ => None,
+};
 /// Wire protocol major version reported by `/v1`.
 pub const API_VERSION: u32 = 1;
 

@@ -2,8 +2,9 @@
 #
 #   docker build --build-arg FLDR_GIT_SHA=$(git rev-parse --short=12 HEAD) -t fldr-server .
 #
-# FLDR_GIT_SHA is optional. The build context excludes .git, so without it
-# /health simply omits gitSha.
+# FLDR_GIT_SHA is optional: when unset, build.rs reads the commit from the
+# .git directory in the build context (Dokploy's clone includes it). If
+# neither is available, /health simply omits gitSha.
 
 FROM rust:1.99-bookworm AS builder
 WORKDIR /src
@@ -24,9 +25,10 @@ RUN for c in fldr-core fldr-store; do \
  && cargo build --release --locked -p fldr-server \
  && rm -rf crates
 
-# 2. The real build. Touch sources so cargo never trusts stub artifacts
-#    whose mtimes could be newer than the copied files.
-COPY crates crates
+# 2. The real build. Copy the full context (crates plus .git, for build.rs)
+#    and touch sources so cargo never trusts stub artifacts whose mtimes
+#    could be newer than the copied files.
+COPY . .
 ARG FLDR_GIT_SHA=
 ENV FLDR_GIT_SHA=${FLDR_GIT_SHA}
 RUN find crates -type f -exec touch {} + \
