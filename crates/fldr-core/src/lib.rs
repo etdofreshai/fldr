@@ -7,8 +7,10 @@
 //! `fldr-server`.
 
 pub mod api;
+pub mod canonical;
 pub mod hash;
 pub mod path;
 
+pub use canonical::{CanonicalError, from_canonical, to_canonical};
 pub use hash::{BlobId, ChangesetId, Hash, HashParseError, ObjectKind, TreeId};
 pub use path::{PathError, RepoPath};
