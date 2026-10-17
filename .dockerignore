@@ -1,0 +1,16 @@
+# Only Cargo manifests and crates/ are needed to build fldr-server.
+target/
+**/target/
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docs/
+*.md
+.fldr-data/
+.DS_Store
+.env
+.env.*
+.idea/
+.vscode/
+node_modules/
