@@ -87,7 +87,7 @@ Every non-2xx JSON response has the same body:
 ```json
 {
   "code": "not_found",
-  "message": "no route for GET /v1/nope"
+  "message": "no route for /v1/nope"
 }
 ```
 
