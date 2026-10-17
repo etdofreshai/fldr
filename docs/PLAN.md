@@ -383,7 +383,7 @@ server. This replaces Scion's regional caches at no cost.
 
 - **M0: scaffold.** Workspace, frozen hash and wire contracts, `BlobStore`
   with memory and filesystem implementations, metadata migration, server with
-  `/health` and `/v1`, `fldr health`, a CI workflow (parked in `ci/` until it can be pushed), and a live deploy on Dokploy. The
+  `/health` and `/v1`, `fldr health`, and a live deploy on Dokploy. The
   pure `fldr-core` data model (RepoPath, trees, changesets, canonical
   encoding, `apply`, `diff`, `build_trees`, `paths_overlap`, golden vectors)
   also landed in M0.

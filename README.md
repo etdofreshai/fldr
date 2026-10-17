@@ -85,6 +85,20 @@ Without `--host` (or `FLDR_HOST`), the CLI talks to
 
 The HTTP API is documented in [`docs/api.md`](docs/api.md).
 
+### Checks
+
+There is no hosted CI; run these before pushing to `main`, which deploys:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+```
+
+The server's Postgres integration test runs only when
+`FLDR_TEST_DATABASE_URL` points at a disposable database; otherwise it is
+skipped.
+
 ## Planned CLI
 
 None of these commands exist yet. This is the intended shape:
