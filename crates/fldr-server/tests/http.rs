@@ -156,3 +156,24 @@ fn volume_id_stable_across_inits() {
     let other = tempfile::tempdir().unwrap();
     assert_ne!(volume::init_data_dir(other.path()).unwrap(), a);
 }
+
+#[tokio::test]
+async fn healthcheck_probe_against_live_server() {
+    let dir = tempfile::tempdir().unwrap();
+    let ok = state(Arc::new(MemBlobStore::new()), dir.path());
+    let bad = state(Arc::new(FailingBlobStore), dir.path());
+    let timeout = std::time::Duration::from_secs(5);
+
+    for (st, expect) in [(ok, true), (bad, false)] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = tokio::spawn(async move { axum::serve(listener, app(st)).await });
+        assert_eq!(
+            fldr_server::healthcheck::probe(port, timeout)
+                .await
+                .unwrap(),
+            expect
+        );
+        server.abort();
+    }
+}
