@@ -662,6 +662,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "fldr-core",
+ "fldr-store",
  "hex",
  "proptest",
  "tempfile",
