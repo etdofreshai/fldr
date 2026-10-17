@@ -7,6 +7,10 @@ rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+# Exposes `fldr_store::testing`, the BlobStore conformance suite.
+testing = []
+
 [dependencies]
 fldr-core.workspace = true
 async-trait.workspace = true
@@ -19,6 +23,8 @@ uuid.workspace = true
 zstd.workspace = true
 
 [dev-dependencies]
+# Self dev-dependency so this crate's own tests get the `testing` feature.
+fldr-store = { path = ".", features = ["testing"] }
 proptest.workspace = true
 tempfile.workspace = true
 

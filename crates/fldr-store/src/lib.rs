@@ -9,11 +9,13 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use fldr_core::BlobId;
 
-pub use fs::FsBlobStore;
+pub use fs::{FsBlobStore, FsOptions};
 pub use mem::MemBlobStore;
 
 mod fs;
 mod mem;
+#[cfg(feature = "testing")]
+pub mod testing;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
